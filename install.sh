@@ -22,20 +22,28 @@ function is_arch_supported() {
 }
 
 function is_homebrew_installed() {
+	# /usr/local/bin/brew
 	return 0
 }
 
 function is_vbox_installed() {
+	if ! command -v VBoxManage >/dev/null; then
+		return 1
+	fi
 	return 0
 }
 
 function is_vagrant_installed() {
+	if ! command -v vagrant >/dev/null; then
+		return 1
+	fi
 	return 0
 }
 
 function install_vagrant() {
 	if is_homebrew_installed; then
-		brew cask --install vagrant
+		brew tap hashicorp/tap
+		brew install hashicorp/tap/vagrant
 	fi
 }
 
@@ -48,21 +56,33 @@ function install_vbox() {
 
 
 function install_homebrew() {
-	#
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
-function is_vvv_installed() {
+function is_git_installed() {
+	if ! command -v git >/dev/null; then
+		return 1
+	fi
 	return 0
 }
 
-function check_git_installed() {
-	if ! command -v git >/dev/null; then
-		abort "You must install Git before running this script."
+function install_git() {
+	if is_homebrew_installed; then
+		brew install git
+	else
+		return 1
 	fi
 }
 
 function get_vvv_dir() {
-	echo "~/vagrant-local"
+	echo "~/vvv-local"
+}
+
+function is_vvv_cloned() {
+	if -d $(get_vvv_dir); then
+		return 0
+	fi
+	return 1
 }
 
 function clone_vvv() {
@@ -70,9 +90,9 @@ function clone_vvv() {
 }
 
 function install_vvv_vagrant_plugins() {
-	cd $(get_vvv_dir)
+	pushd $(get_vvv_dir)
 	vagrant plugin install --local
-	cd -
+	popd
 }
 
 function setup_vvv_config() {
@@ -80,9 +100,9 @@ function setup_vvv_config() {
 }
 
 function provision_vvv() {
-	cd $(get_vvv_dir)
+	pushd $(get_vvv_dir)
 	vagrant up --provision
-	cd -
+	popd
 }
 
 function trust_root_cert() {
@@ -97,10 +117,15 @@ if ! is_vagrant_installed; then
 	install_vagrant
 fi
 
-if ! is_vvv_installed; then
-	clone_vvv
-	install_vvv_vagrant_plugins
-	setup_vvv_config
-	provision_vvv
-	trust_root_cert
+if ! is_git_installed; then
+	install_git
 fi
+
+if ! is_vvv_cloned; then
+	clone_vvv
+fi
+
+install_vvv_vagrant_plugins
+setup_vvv_config
+provision_vvv
+trust_root_cert
