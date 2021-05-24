@@ -11,11 +11,23 @@ fi
 
 # First check OS.
 OS="$(uname)"
+VVV_ON_LINUX=0
 if [[ "$OS" == "Linux" ]]; then
 	VVV_ON_LINUX=1
 elif [[ "$OS" != "Darwin" ]]; then
 	abort "This script is only supported on macOS and Linux."
 fi
+
+function is_macos() {
+	if [[ "${OS}" != "Darwin" ]]; then
+		return 1
+	fi
+	return 0
+}
+
+function is_linux() {
+	return VVV_ON_LINUX
+}
 
 function is_arch_supported() {
 	# return yes if x86_64, no if anything else
@@ -105,8 +117,16 @@ function provision_vvv() {
 	popd
 }
 
+function is_root_cert_trusted() {
+	return 0
+}
+
 function trust_root_cert() {
-	#
+	if is_macos then
+		pushd $(get_vvv_dir)
+		sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain certificates/ca/ca.crt
+		popd
+	fi
 }
 
 if ! is_vbox_installed; then
@@ -128,4 +148,7 @@ fi
 install_vvv_vagrant_plugins
 setup_vvv_config
 provision_vvv
-trust_root_cert
+
+if ! is_root_cert_trusted; then
+	trust_root_cert
+fi
