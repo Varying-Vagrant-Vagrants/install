@@ -29,8 +29,30 @@ function is_linux() {
 	return VVV_ON_LINUX
 }
 
+function is_x86_64() {
+	# Fetch CPU architecture
+	local ARCH=$(uname -m)
+	if [[ "${ARCH}" != "x86_64" ]]; then
+		return 1
+	fi
+	return 0
+}
+
+function is_arm64() {
+	# Fetch CPU architecture
+	local ARCH=$(uname -m)
+	if [[ "${ARCH}" != "aarch64" ]]; then
+		return 1
+	fi
+	return 0
+}
+
 function is_arch_supported() {
 	# return yes if x86_64, no if anything else
+	if is_x86_64; then
+		return 0
+	fi
+	return 1
 }
 
 function is_homebrew_installed() {
@@ -60,6 +82,10 @@ function install_vagrant() {
 }
 
 function install_vbox() {
+	if ! is_x86_64; then
+		abort "VirtualBox requires an x86 processor from Intel or AMD, but this machine is not x86_64/Amd64. Are you running under Arm?"
+	fi
+
 	if is_homebrew_installed; then
 		brew cask --install virtualbox
 		abort "You must restart your computer after installing VirtualBox. Do that, then re-run this script."
@@ -128,6 +154,10 @@ function trust_root_cert() {
 		popd
 	fi
 }
+
+if ! is_arch_supported; then
+	abort "Unsupported CPU architecture detected, this script only works for 64bit AMD and Intel processors. Arm64/Apple Silicon users should consult the installation instructions instead."
+fi
 
 if ! is_vbox_installed; then
 	install_vbox
